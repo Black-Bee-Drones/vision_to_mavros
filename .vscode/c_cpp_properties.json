@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/samuel/ros2_ws/install/ros2_parrot_arsdk/include/**",
+        "/home/samuel/ros2_ws/install/pid_library/include/**",
+        "/home/samuel/ros2_ws/install/mirela_interfaces/include/**",
+        "/home/samuel/ros2_ws/install/image_geometry/include/**",
+        "/home/samuel/ros2_ws/install/cv_bridge/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/samuel/ros2_ws/src/vision_to_mavros/include/**",
+        "include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
