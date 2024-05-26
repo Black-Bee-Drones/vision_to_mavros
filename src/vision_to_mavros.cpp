@@ -1,15 +1,38 @@
 #include <vision_to_mavros/vision_to_mavros.hpp>
 
+/**
+ * @brief Constructor for the VisionToMavros class.
+ * @details Initializes the node, creates a tf2_ros Buffer and TransformListener, and sets up the timer interface.
+ * Also calls methods to initialize navigation and precision landing parameters.
+ */
 VisionToMavros::VisionToMavros() : Node("vision_to_mavros_node") {
     // Create a tf2_ros Buffer and TransformListener
     buffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
-    transform_listener = std::make_shared<tf2_ros::TransformListener>(*buffer);
+
+    // Create a timer interface and set it on the buffer
+    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+        this->get_node_base_interface(),
+        this->get_node_timers_interface());
+    buffer->setCreateTimerInterface(timer_interface);
     
+    transform_listener = std::make_shared<tf2_ros::TransformListener>(*buffer);
+
     this->navigationParameters();
     this->precisionLandParameters();
 }
 
 
+/**
+ *   @brief Reads the parameters from the parameter server and sets the class variables accordingly. 
+ *   @details Parameters are:
+ *   - target_frame_id: The frame in which we find the transform into, the original "world" frame
+ *   - source_frame_id: The frame for which we find the tranform to target_frame_id, the original "camera" frame
+ *   - output_rate: The rate at which we wish to publish final pose data
+ *   - gamma_world: The rotation around z axis between original world frame and target world frame, assuming the z axis needs not to be changed
+ *   - roll_cam: The pitch angle around camera's own axis to align with body frame
+ *   - pitch_cam: The roll angle around camera's own axis to align with body frame
+ *   - yaw_cam: The yaw angle around camera's own axis to align with body frame
+ */
 void VisionToMavros::navigationParameters(void) {
     camera_pose_publisher = this->create_publisher<geometry_msgs::msg::PoseStamped>("vision_pose", 10);
     body_path_publisher = this->create_publisher<nav_msgs::msg::Path>("body_frame/path", 1);
@@ -52,6 +75,13 @@ void VisionToMavros::navigationParameters(void) {
     RCLCPP_INFO(this->get_logger(), "Get yaw_cam parameter: %f", yaw_cam);
 }
 
+/**
+ * @brief Reads the precision landing parameters from the parameter server and sets the class variables accordingly.
+ * @details Parameters are:
+ * - enable_precland: Flag to enable or disable precision landing.
+ * - precland_target_frame_id: The frame of the landing target.
+ * - precland_camera_frame_id: The frame of the camera used for precision landing.
+ */
 void VisionToMavros::precisionLandParameters(void) {
     this->declare_parameter<bool>("enable_precland", false);
     this->get_parameter("enable_precland", enable_precland);
@@ -77,43 +107,63 @@ void VisionToMavros::transformReady(const std::shared_future<geometry_msgs::msg:
     RCLCPP_INFO(this->get_logger(), "Transform result: %f %f %f", transform.get().transform.translation.x, transform.get().transform.translation.y, transform.get().transform.translation.z);
 }
 
-bool VisionToMavros::waitForFirstTransform(void) {
+/**
+ * @brief Waits for the first transform to be available.
+ * @param timeout The maximum time to wait for the transform in seconds. Default is 12.0 seconds.
+ * @return true if the transform is received within the timeout period, false otherwise.
+ * @details This method attempts to obtain the transform between the target and source frames
+ * within the specified timeout period. It checks for the transform at a rate of 3 Hz and logs
+ * any errors or warnings encountered during the process.
+ */
+bool VisionToMavros::waitForFirstTransform(double timeout=12.0) {
     // Wait for the first transform to be available
     bool received = false;
-    std::string* error_msg = new std::string;
+    std::string error_msg;
     auto start_time = this->now();
-    while (rclcpp::ok())
-    {
-      if (buffer->canTransform(target_frame_id, source_frame_id, tf2::TimePointZero, error_msg))
-      {
-        received = true;
-        break;
-      }
-      else if (this->now() - start_time > rclcpp::Duration::from_seconds(10)) // 10 seconds timeout
-      {
-        RCLCPP_ERROR(this->get_logger(), "Timeout waiting for transform...");
-        received = false;
-        break;
-      }
-      else
-      {
-        RCLCPP_WARN(this->get_logger(), "Error mensage: %s", error_msg->c_str());
-        RCLCPP_INFO(this->get_logger(), "Waiting for transform...");
-        rclcpp::sleep_for(std::chrono::seconds(1));
-      }
+
+    RCLCPP_INFO(this->get_logger(), "Waiting for transform between %s and %s", target_frame_id.c_str(), source_frame_id.c_str());
+
+    rclcpp::Rate rate(3.0);  // Check at a rate of 3 Hz
+    while (rclcpp::ok() && (this->now() - start_time < rclcpp::Duration::from_seconds(timeout))) {
+        if (buffer->canTransform(target_frame_id, source_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(3.0), &error_msg)) {
+            received = true;
+            break;
+        } else {
+            RCLCPP_WARN(this->get_logger(), "Error message: %s", error_msg.c_str());
+            RCLCPP_INFO(this->get_logger(), "Waiting for transform...");
+        }
+        rate.sleep();
     }
-    delete error_msg;
+
+    if (!received) {
+        RCLCPP_ERROR(this->get_logger(), "Timeout waiting for transform after %.1f seconds.", timeout);
+    }
+
     return received;
 }
 
+/**
+ * @brief Starts the main processing loop of the VisionToMavros node.
+ * @details This method initializes the timer to periodically call the publishVisionPositionEstimate method
+ * at the specified output rate. It waits for the first transform to be available before starting the timer.
+ * If the transform is not received within the timeout period, the method returns early. 
+ * The method spins the node to keep it alive and processes callbacks.
+ */
 void VisionToMavros::run(void) {
     RCLCPP_INFO(this->get_logger(), "Running Vision To Mavros");
+    
+    double timeout = 12.0;
+    
+    if (!this->waitForFirstTransform(timeout)) return;
 
-    // Set a timeout duration
-    rclcpp::Duration timeout(3, 0); 
-    RCLCPP_INFO(this->get_logger(), "Waiting for transform between %s and %s", target_frame_id.c_str(), source_frame_id.c_str());
+    // auto future = buffer->waitForTransform(target_frame_id, source_frame_id, tf2::TimePointZero, tf2::durationFromSec(timeout), std::bind(&VisionToMavros::transformReady, this, std::placeholders::_1));
 
-    if (!this->waitForFirstTransform()) return;
+    // if (future.wait_for(std::chrono::seconds(static_cast<int64_t>(timeout))) == std::future_status::timeout) {
+    //     RCLCPP_ERROR(this->get_logger(), "Transformation not available after waiting for 3 seconds.");
+    //     return;
+    // }
+
+    RCLCPP_INFO(this->get_logger(), "First transform is received");
 
     this->last_tf_time = this->get_clock()->now();
 
@@ -135,9 +185,17 @@ void VisionToMavros::run(void) {
     // }
 }
 
+/**
+ * @brief Publishes the vision position estimate if the transform is available.
+ * @details This method retrieves the latest available transform between the target and source frames.
+ * If a new transform is received, it calculates the position and orientation in the body frame,
+ * creates a PoseStamped message, and publishes it. It also updates the trajectory path for visualization.
+ * Any exceptions encountered during the transform lookup are logged as warnings.
+ */
 void VisionToMavros::publishVisionPositionEstimate() {
     // Publish vision_position_estimate message if transform is available
     try {
+        // For tf2, TimePointZero is a special value that means "latest available transform"
         transform_stamped = buffer->lookupTransform(target_frame_id, source_frame_id, tf2::TimePointZero);
 
         // Only publish pose messages when we have new transform data.

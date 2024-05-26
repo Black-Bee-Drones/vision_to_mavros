@@ -29,7 +29,7 @@ class VisionToMavros : public rclcpp::Node {
         void navigationParameters(void);
         void precisionLandParameters(void);
         void transformReady(const std::shared_future<geometry_msgs::msg::TransformStamped>&);
-        bool waitForFirstTransform(void);
+        bool waitForFirstTransform(double);
         void publishVisionPositionEstimate();
 
         rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr camera_pose_publisher; 
