@@ -1,6 +1,7 @@
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
@@ -27,7 +28,7 @@ def generate_launch_description():
 
     # Diretório do pacote
     mavros_launch_file = os.path.join(
-        FindPackageShare("mavros").find("mavros"), "launch", "apm.launch.py"
+        FindPackageShare("mavros").find("mavros"), "launch", "apm.launch"
     )
 
     realsense_launch_file = os.path.join(
@@ -66,7 +67,7 @@ def generate_launch_description():
             ),
             # This node will launch MAVROS
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(mavros_launch_file),
+                XMLLaunchDescriptionSource(mavros_launch_file),
                 launch_arguments={"fcu_url": fcu_url}.items(),
             ),
             # This node will launch the node that bridges realsense-ros and MAVROS

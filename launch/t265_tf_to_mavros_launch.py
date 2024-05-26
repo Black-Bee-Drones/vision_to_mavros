@@ -72,7 +72,7 @@ def generate_launch_description():
                     {"gamma_world": LaunchConfiguration("gamma_world")},
                 ],
                 remappings=[("vision_pose", "/mavros/vision_pose/pose")],
-                on_exit=Shutdown(),
+                #on_exit=Shutdown(),
             ),
         ]
     )
