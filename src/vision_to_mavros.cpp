@@ -103,7 +103,6 @@ void VisionToMavros::precisionLandParameters(void) {
 }
 
 void VisionToMavros::transformReady(const std::shared_future<geometry_msgs::msg::TransformStamped>& transform) {
-    // Callback for when the transform is ready
     RCLCPP_INFO(this->get_logger(), "Transform result: %f %f %f", transform.get().transform.translation.x, transform.get().transform.translation.y, transform.get().transform.translation.z);
 }
 
@@ -116,14 +115,13 @@ void VisionToMavros::transformReady(const std::shared_future<geometry_msgs::msg:
  * any errors or warnings encountered during the process.
  */
 bool VisionToMavros::waitForFirstTransform(double timeout=12.0) {
-    // Wait for the first transform to be available
     bool received = false;
     std::string error_msg;
     auto start_time = this->now();
 
     RCLCPP_INFO(this->get_logger(), "Waiting for transform between %s and %s", target_frame_id.c_str(), source_frame_id.c_str());
 
-    rclcpp::Rate rate(3.0);  // Check at a rate of 3 Hz
+    rclcpp::Rate rate(3.0);
     while (rclcpp::ok() && (this->now() - start_time < rclcpp::Duration::from_seconds(timeout))) {
         if (buffer->canTransform(target_frame_id, source_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(3.0), &error_msg)) {
             received = true;
@@ -236,7 +234,6 @@ void VisionToMavros::publishVisionPositionEstimate() {
             // Publish pose of body frame in world frame
             camera_pose_publisher->publish(msg_body_pose);
 
-            // Publish trajectory path for visualization
             body_path.header.stamp = msg_body_pose.header.stamp;
             body_path.header.frame_id = msg_body_pose.header.frame_id;
             body_path.poses.push_back(msg_body_pose);
@@ -249,7 +246,6 @@ void VisionToMavros::publishVisionPositionEstimate() {
     }
 }
 
-// Main function
 int main(int argc, char ** argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<VisionToMavros>();
