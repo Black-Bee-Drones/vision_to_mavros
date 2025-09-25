@@ -166,3 +166,6 @@ vscode
 logs/
 log/
 *.log
+
+*.tlog
+*.tlog.raw
