@@ -26,7 +26,9 @@ def generate_launch_description():
             'enable_accel': True,
             'gyro_fps': 200,
             'accel_fps': 200,
-            'unite_imu_method': 2
+            'unite_imu_method': 2,
+            'enable_sync': False,
+            'tf_publish_rate': 0.0
         }],
     )
 
@@ -44,15 +46,21 @@ def generate_launch_description():
             'accel_random_walk': 0.003,
             'calibration_frequency': 200.0,
             'image_jitter_threshold_ms': 22.00,
+            'imu_jitter_threshold_ms': 10.0,
             'base_frame': 'camera_link',
             'imu_frame': 'camera_gyro_optical_frame',
-            'enable_slam_visualization': False,
+            'enable_slam_visualization': False, 
             'enable_landmarks_view': False,
             'enable_observations_view': False,
             'camera_optical_frames': [
                 'camera_infra1_optical_frame',
                 'camera_infra2_optical_frame',
             ],
+            'verbosity': 0,
+            'enable_debug_mode': False,
+            'enable_ground_constraint_in_odometry': False,
+            'enable_ground_constraint_in_slam': False,
+
         }],
         remappings=[
             ('visual_slam/image_0', 'camera/infra1/image_rect_raw'),

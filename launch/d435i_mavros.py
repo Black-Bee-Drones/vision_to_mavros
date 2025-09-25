@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """
-1. MAVROS for MAVLink communication
+Launch file for indoor drone operations with minimal MAVROS plugins:
+1. MAVROS with optimized plugin configuration for indoor flight
 2. Relay node to bridge visual SLAM pose to MAVROS
+
+Uses custom configuration files:
+- indoor_pluginlists.yaml: Minimal plugin set for indoor operations
+- indoor_config.yaml: Optimized plugin configurations
 """
 
 import os
@@ -34,6 +39,10 @@ def generate_launch_description():
         "apm.launch"
     )
     
+    # Custom configuration files for indoor flight (use absolute paths)
+    indoor_pluginlists_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_pluginlists.yaml"
+    indoor_config_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_config.yaml"
+    
     # Relay Node - Bridge Visual SLAM pose to MAVROS
     relay_node = Node(
         package='topic_tools',
@@ -63,15 +72,24 @@ def generate_launch_description():
         DeclareLaunchArgument('tgt_component', default_value=tgt_component,
                             description='Target component ID'),
         
-        # Launch MAVROS
-        IncludeLaunchDescription(
-            XMLLaunchDescriptionSource(mavros_launch_file),
-            launch_arguments={
-                'fcu_url': fcu_url,
-                'gcs_url': gcs_url,
-                'tgt_system': tgt_system,
-                'tgt_component': tgt_component,
-            }.items(),
+        # Launch MAVROS node directly with parameters
+        Node(
+            package='mavros',
+            executable='mavros_node',
+            name='mavros',
+            namespace='mavros',
+            output='screen',
+            parameters=[
+                {
+                    'fcu_url': fcu_url,
+                    'gcs_url': gcs_url,
+                    'tgt_system': tgt_system,
+                    'tgt_component': tgt_component,
+                    'fcu_protocol': 'v2.0',
+                },
+                indoor_pluginlists_file,
+                indoor_config_file,
+            ],
         ),
         
         # Launch relay node to bridge Visual SLAM pose to MAVROS

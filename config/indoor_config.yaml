@@ -1,0 +1,89 @@
+# Minimal configuration for indoor MAVROS operation
+# Only includes settings for enabled plugins
+/**:
+  ros__parameters:
+    startup_px4_usb_quirk: false
+
+# --- system plugins ---
+
+# sys_status - Essential for heartbeat and system monitoring
+/**/sys:
+  ros__parameters:
+    min_voltage: [10.0]                    # Battery voltage monitoring
+    disable_diag: false                    # Keep diagnostics enabled
+    heartbeat_rate: 1.0                    # Send heartbeat at 1Hz
+    heartbeat_mav_type: "ONBOARD_CONTROLLER"
+    conn_timeout: 10.0                     # Connection timeout
+
+# sys_time - Time synchronization with FCU
+/**/time:
+  ros__parameters:
+    time_ref_source: "fcu"                 # Use FCU as time reference
+    timesync_mode: MAVLINK
+    timesync_avg_alpha: 0.6
+    timesync_rate: 10.0                    # 10Hz time sync
+    system_time_rate: 1.0                  # Send system time at 1Hz
+
+# --- essential plugins for indoor flight ---
+
+# command - Basic flight commands
+/**/cmd:
+  ros__parameters:
+    use_comp_id_system_control: false      # Standard component ID
+
+# imu - IMU data for attitude estimation
+/**/imu:
+  ros__parameters:
+    frame_id: "base_link"
+    linear_acceleration_stdev: 0.0003
+    angular_velocity_stdev: 0.0003490659   # 0.02 degrees
+    orientation_stdev: 1.0
+    magnetic_stdev: 0.0
+
+# local_position - Local position estimation (essential for indoor)
+/**/local_position:
+  ros__parameters:
+    frame_id: "map"                        # Use map frame for VSLAM
+    tf.send: false                         # Don't publish TF (VSLAM handles this)
+    tf.frame_id: "map"
+    tf.child_frame_id: "base_link"
+    tf.send_fcu: false                     # Don't send TF to FCU
+
+# distance_sensor - Rangefinder/lidar configuration
+/**/distance_sensor:
+  ros__parameters:
+    config: |
+      rangefinder_pub:
+        id: 0
+        frame_id: "lidar"
+        field_of_view: 0.0
+        send_tf: false
+        sensor_position: {x: 0.0, y: 0.0, z: -0.1}
+      rangefinder_sub:
+        subscriber: true
+        id: 1
+        orientation: PITCH_270               # Downward facing rangefinder
+
+# setpoint_raw - Raw position/velocity commands
+/**/setpoint_raw:
+  ros__parameters:
+    thrust_scaling: 1.0                    # Normalized thrust scaling
+
+# setpoint_velocity - Velocity setpoint commands  
+/**/setpoint_velocity:
+  ros__parameters:
+    mav_frame: LOCAL_NED                   # Use local NED frame
+
+# vision_pose - Visual SLAM pose input
+/**/vision_pose:
+  ros__parameters:
+    tf.listen: false                       # Don't listen to TF
+    tf.frame_id: "map"                     # Map frame for VSLAM
+    tf.child_frame_id: "vision_estimate"
+    tf.rate_limit: 30.0                    # Higher rate for indoor precision
+
+# odometry - Odometry data handling
+/**/odometry:
+  ros__parameters:
+    fcu.odom_parent_id_des: "map"          # Map frame as parent
+    fcu.odom_child_id_des: "base_link"     # Base link as child
