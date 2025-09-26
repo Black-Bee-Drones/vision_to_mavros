@@ -1,48 +1,27 @@
-#!/usr/bin/env python3
-"""
-Launch file for indoor drone operations with minimal MAVROS plugins:
-1. MAVROS with optimized plugin configuration for indoor flight
-2. Relay node to bridge visual SLAM pose to MAVROS
-
-Uses custom configuration files:
-- indoor_pluginlists.yaml: Minimal plugin set for indoor operations
-- indoor_config.yaml: Optimized plugin configurations
-"""
-
-import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
-from launch_ros.actions import Node, ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
 from launch.substitutions import LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
-
+from launch_ros.actions import Node
+import os
 
 def generate_launch_description():
-    # ============== LAUNCH ARGUMENTS ==============
-    
-    # MAVROS arguments
     fcu_url = LaunchConfiguration("fcu_url", default="/dev/ttyTHS1:921600")
     gcs_url = LaunchConfiguration("gcs_url", default="")
     tgt_system = LaunchConfiguration("tgt_system", default="1")
     tgt_component = LaunchConfiguration("tgt_component", default="1")
+    namespace = LaunchConfiguration("namespace", default="mavros")
 
-    
-    # ============== LAUNCH FILE PATHS ==============
-    
-    # MAVROS launch file
-    mavros_launch_file = os.path.join(
-        FindPackageShare("mavros").find("mavros"), 
-        "launch", 
-        "apm.launch"
+    node_launch_file = os.path.join(
+        FindPackageShare("mavros").find("mavros"),
+        "launch",
+        "node.launch"
     )
-    
-    # Custom configuration files for indoor flight (use absolute paths)
+
     indoor_pluginlists_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_pluginlists.yaml"
-    indoor_config_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_config.yaml"
-    
+    indoor_config_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_config2.yaml"
+
     # Relay Node - Bridge Visual SLAM pose to MAVROS
     relay_node = Node(
         package='topic_tools',
@@ -57,41 +36,26 @@ def generate_launch_description():
             'lazy': False,  # Always relay, don't wait for subscribers
         }]
     )
-    
-    
-    # ============== LAUNCH DESCRIPTION ==============
-    
+
     return LaunchDescription([
-        # Declare launch arguments
-        DeclareLaunchArgument('fcu_url', default_value=fcu_url,
-                            description='FCU connection URL'),
-        DeclareLaunchArgument('gcs_url', default_value=gcs_url,
-                            description='GCS connection URL'),
-        DeclareLaunchArgument('tgt_system', default_value=tgt_system,
-                            description='Target system ID'),
-        DeclareLaunchArgument('tgt_component', default_value=tgt_component,
-                            description='Target component ID'),
-        
-        # Launch MAVROS node directly with parameters
-        Node(
-            package='mavros',
-            executable='mavros_node',
-            name='mavros',
-            namespace='mavros',
-            output='screen',
-            parameters=[
-                {
-                    'fcu_url': fcu_url,
-                    'gcs_url': gcs_url,
-                    'tgt_system': tgt_system,
-                    'tgt_component': tgt_component,
-                    'fcu_protocol': 'v2.0',
-                },
-                indoor_pluginlists_file,
-                indoor_config_file,
-            ],
+        DeclareLaunchArgument('fcu_url', default_value=fcu_url),
+        DeclareLaunchArgument('gcs_url', default_value=gcs_url),
+        DeclareLaunchArgument('tgt_system', default_value=tgt_system),
+        DeclareLaunchArgument('tgt_component', default_value=tgt_component),
+        DeclareLaunchArgument('namespace', default_value=namespace),
+
+        IncludeLaunchDescription(
+            XMLLaunchDescriptionSource(node_launch_file),
+            launch_arguments={
+                "pluginlists_yaml": indoor_pluginlists_file,
+                "config_yaml": indoor_config_file,
+                "fcu_url": fcu_url,
+                "gcs_url": gcs_url,
+                "tgt_system": tgt_system,
+                "tgt_component": tgt_component,
+                "namespace": namespace,
+            }.items()
         ),
-        
-        # Launch relay node to bridge Visual SLAM pose to MAVROS
-        relay_node,
+
+        relay_node
     ])

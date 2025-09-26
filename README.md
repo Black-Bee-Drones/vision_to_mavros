@@ -2,65 +2,23 @@
 
 A ROS2 adaptation of the [vision_to_mavros package](https://github.com/thien94/vision_to_mavros) for integrating vision-based pose estimation systems with MAVROS in ROS2.
 
-* Easy integration between vision-based systems and ArduPilot/PX4 via MAVROS
-* Support for Intel® RealSense™ D435i with Isaac ROS Visual SLAM (GPU-accelerated on Jetson)
-* Support for Intel® RealSense™ T265 tracking camera with built-in VIO
-* Simple configuration for various camera mounting orientations (T265)
-* Direct pose relay for D435i (no transformation needed)
-* Transforms TF2 pose data to the frame expected by flight controllers (T265)
+* Easy integration between vision-based systems (like Intel® RealSense™ T265) and ArduPilot/PX4 via MAVROS
+* Simple configuration for various camera mounting orientations
+* Transforms TF2 pose data to the frame expected by flight controllers
 * Full ROS2 implementation with launch files for quick setup
 * Support for precision landing capabilities
 
 ## Overview
 
-This package provides a bridge between vision-based localization systems and flight controllers using ROS2. It supports multiple vision systems:
+This package provides a bridge between vision-based localization systems and flight controllers using ROS2. It subscribes to TF2 transforms provided by vision systems (like the Intel RealSense T265 tracking camera), performs the necessary frame transformations, and publishes the pose data in a format that can be consumed by MAVROS and subsequently by flight controllers like ArduPilot or PX4.
 
-1. **Intel RealSense D435i with Isaac ROS Visual SLAM** - GPU-accelerated visual-inertial odometry for high-performance indoor navigation on Jetson platforms
-2. **Intel RealSense T265** - Dedicated tracking camera with built-in VIO processing
-
-The package handles coordinate frame transformations and publishes pose data in a format that can be consumed by MAVROS and subsequently by flight controllers like ArduPilot or PX4, ensuring proper alignment according to ENU (East-North-Up) conventions.
+The vision_to_mavros node handles the coordinate frame transformations to convert from the vision system's frame to the frame expected by the flight controller, ensuring proper alignment of the body frame with the world frame according to ENU (East-North-Up) conventions.
 
 ### Authors
 
 This ROS2 adaptation is based on the original [vision_to_mavros](https://github.com/thien94/vision_to_mavros) package created by Thien Nguyen for ROS1. 
 
 ## Usage Instructions
-
-### With Intel® RealSense™ D435i and Isaac ROS Visual SLAM
-
-The D435i camera paired with NVIDIA Isaac ROS Visual SLAM provides GPU-accelerated visual-inertial odometry, ideal for high-performance indoor navigation on Jetson platforms.
-
-#### Prerequisites for D435i
-```bash
-# Install Isaac ROS packages (in Isaac ROS Docker container or on Jetson)
-sudo apt-get update
-sudo apt-get install -y ros-humble-isaac-ros-visual-slam
-sudo apt-get install -y ros-humble-isaac-ros-examples
-sudo apt-get install -y ros-humble-isaac-ros-realsense
-sudo apt-get install -y ros-humble-topic-tools
-```
-
-#### Launch D435i with Visual SLAM and MAVROS
-```bash
-# Launch all nodes (camera, visual SLAM, MAVROS, and relay)
-ros2 launch vision_to_mavros d435i_all_nodes_launch.py
-
-# With custom parameters
-ros2 launch vision_to_mavros d435i_all_nodes_launch.py \
-    fcu_url:=/dev/ttyACM0:57600 \
-    enable_slam_visualization:=false
-```
-
-#### D435i Configuration
-The D435i is automatically configured for optimal Visual SLAM performance:
-- **Infrared stereo cameras**: 640x360@90fps for visual odometry
-- **IMU**: 200Hz for both gyro and accelerometer
-- **IR Projector**: Disabled to avoid interference
-- **Direct pose relay**: Visual SLAM output is directly relayed to MAVROS (no transformation needed)
-
-#### Key Topics for D435i
-- `/visual_slam/tracking/vo_pose_covariance` - Visual SLAM pose with covariance
-- `/mavros/vision_pose/pose_cov` - Relayed pose to MAVROS
 
 ### With Intel® RealSense™ T265 Tracking Camera
 
@@ -130,30 +88,7 @@ source install/setup.bash
 
 ## Configuration Parameters
 
-### D435i Launch Arguments
-
-The `d435i_all_nodes_launch.py` provides these parameters:
-
-**MAVROS Arguments:**
-- `fcu_url` (default: `/dev/ttyUSB0:57600`) - Flight controller connection
-- `gcs_url` (default: `""`) - Ground control station connection
-- `tgt_system` (default: `1`) - Target system ID
-- `tgt_component` (default: `1`) - Target component ID
-
-**Camera Arguments:**
-- `camera_name` (default: `camera`) - Camera name
-- `camera_namespace` (default: `camera`) - Camera namespace
-- `usb_port_id` (default: `""`) - USB port ID (auto-detect if empty)
-- `device_type` (default: `d435i`) - RealSense device type
-
-**Visual SLAM Arguments:**
-- `enable_slam_visualization` (default: `true`) - Enable SLAM visualization
-- `enable_landmarks_view` (default: `true`) - Show tracked landmarks
-- `enable_observations_view` (default: `true`) - Show feature observations
-
-### T265 Node Parameters
-
-The vision_to_mavros node provides these configuration parameters:
+The node provides several configuration parameters:
 
 - `target_frame_id`: The frame in which we find the transform (default: `/camera_odom_frame`)
 - `source_frame_id`: The frame for which we find the transform (default: `/camera_link`)
@@ -172,55 +107,8 @@ The vision_to_mavros node provides these configuration parameters:
 - `/mavros/vision_pose/pose` (geometry_msgs/PoseStamped): The transformed pose for the flight controller
 - `/body_frame/path` (nav_msgs/Path): Visualizes the trajectory of the body frame in rviz2
 
-## Troubleshooting
-
-### D435i Issues
-
-**Camera Not Detected:**
-```bash
-# Check if camera is connected
-rs-enumerate-devices
-
-# Check USB port
-ls /dev/video*
-```
-
-**Visual SLAM Not Starting:**
-```bash
-# Check if Isaac ROS packages are installed
-ros2 pkg list | grep isaac_ros
-
-# Verify camera topics
-ros2 topic list | grep camera
-```
-
-**No Pose Output to MAVROS:**
-```bash
-# Check if relay is working
-ros2 topic echo /visual_slam/tracking/vo_pose_covariance
-ros2 topic echo /mavros/vision_pose/pose_cov
-```
-
-### T265 Issues
-
-**Camera Not Publishing Data:**
-```bash
-# Check T265 topics
-ros2 topic list | grep camera
-
-# Check TF transforms
-ros2 run tf2_ros tf2_echo camera_odom_frame camera_link
-```
-
-### Performance Tips
-
-- **For D435i**: Ensure USB 3.0 connection, disable visualization for production, monitor with `jtop` on Jetson
-- **For T265**: Tilt vehicle nose up slightly when starting (for downfacing orientation)
-- **Both cameras**: Ensure good lighting and textured surfaces for optimal tracking
-
 ## Additional Resources
 
-- [NVIDIA Isaac ROS Visual SLAM](https://nvidia-isaac-ros.github.io/concepts/visual_slam/index.html)
 - [ArduPilot Vision Position Estimation with T265](https://ardupilot.org/dev/docs/ros-vio-tracking-camera.html)
 - [Non-ROS Documentation for T265 with ArduPilot](https://ardupilot.org/copter/docs/common-vio-tracking-camera.html)
 - [LuckyBird Tutorials](https://discuss.ardupilot.org/t/integration-of-ardupilot-and-vio-tracking-camera-part-1-getting-started-with-the-intel-realsense-t265-on-rasberry-pi-3b/43162)

@@ -49,6 +49,14 @@
     tf.child_frame_id: "base_link"
     tf.send_fcu: false                     # Don't send TF to FCU
 
+/**/home_position:
+  ros__parameters:
+    frame_id: "map"
+    tf.send: false
+    tf.frame_id: "map"
+    tf.child_frame_id: "home"
+
+
 # distance_sensor - Rangefinder/lidar configuration
 /**/distance_sensor:
   ros__parameters:
@@ -63,6 +71,14 @@
         subscriber: true
         id: 1
         orientation: PITCH_270               # Downward facing rangefinder
+
+# guided_target
+/**/guided_target:
+  ros__parameters:
+    tf.listen: false           # enable tf listener (disable topic subscribers)
+    tf.frame_id: "map"
+    tf.child_frame_id: "target_position"
+    tf.rate_limit: 50.0
 
 # setpoint_raw - Raw position/velocity commands
 /**/setpoint_raw:
@@ -80,7 +96,13 @@
     tf.listen: false                       # Don't listen to TF
     tf.frame_id: "map"                     # Map frame for VSLAM
     tf.child_frame_id: "vision_estimate"
-    tf.rate_limit: 30.0                    # Higher rate for indoor precision
+    tf.rate_limit: 10.0
+
+# vision_speed_estimate
+/**/vision_speed:
+  ros__parameters:
+    listen_twist: true    # enable listen to twist topic, else listen to vec3d topic
+    twist_cov: true       # enable listen to twist with covariance topic
 
 # odometry - Odometry data handling
 /**/odometry:
