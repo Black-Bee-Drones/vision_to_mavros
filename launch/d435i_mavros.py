@@ -5,6 +5,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 import os
+from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     fcu_url = LaunchConfiguration("fcu_url", default="/dev/ttyTHS1:921600")
@@ -19,8 +20,9 @@ def generate_launch_description():
         "node.launch"
     )
 
-    indoor_pluginlists_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_pluginlists.yaml"
-    indoor_config_file = "/home/jetson/ros2_ws/src/vision_to_mavros/config/indoor_config2.yaml"
+    vision_to_mavros_share_dir = get_package_share_directory('vision_to_mavros')
+    indoor_pluginlists_file = os.path.join(vision_to_mavros_share_dir, 'config', 'indoor_pluginlists.yaml')
+    indoor_config_file = os.path.join(vision_to_mavros_share_dir, 'config', 'indoor_config.yaml')
 
     # Relay Node - Bridge Visual SLAM pose to MAVROS
     relay_node = Node(
