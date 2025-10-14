@@ -9,15 +9,13 @@ class PathBuilder(Node):
     def __init__(self):
         super().__init__('path_builder')
 
-        # Substitua pelo tópico que vem do Isaac ROS
         self.pose_sub = self.create_subscription(
             PoseStamped,
-            '/visual_slam/tracking/vo_pose',  # ou o tópico real do seu SLAM
+            '/visual_slam/tracking/vo_pose',
             self.pose_callback,
             qos_profile_sensor_data
         )
 
-        # Tópico de saída para o RViz
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.RELIABLE,
             history=HistoryPolicy.KEEP_LAST,
@@ -32,15 +30,12 @@ class PathBuilder(Node):
         self.get_logger().info("PathBuilder iniciado e escutando /visual_slam/tracking/vo_pose")
 
     def pose_callback(self, msg):
-        # Pega o header do frame original
         self.path.header = msg.header
 
-        # Adiciona pose a cada N mensagens (reduz carga)
         self.counter += 1
         if self.counter % 10 == 0:  # a cada 10 poses
             self.path.poses.append(msg)
 
-            # Mantém no máximo 500 pontos pra não sobrecarregar o RViz
             if len(self.path.poses) > 500:
                 self.path.poses.pop(0)
 
