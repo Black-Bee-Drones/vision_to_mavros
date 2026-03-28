@@ -26,6 +26,13 @@ def generate_launch_description():
     unite_imu_method = LaunchConfiguration("unite_imu_method", default="0")
     tf_publish_rate = LaunchConfiguration("tf_publish_rate", default="0.0")
 
+    # T265 V-SLAM options (set before pipeline start by realsense2_camera)
+    # https://github.com/IntelRealSense/librealsense/pull/4321
+    enable_mapping = LaunchConfiguration("enable_mapping", default="true")
+    enable_relocalization = LaunchConfiguration("enable_relocalization", default="true")
+    enable_pose_jumping = LaunchConfiguration("enable_pose_jumping", default="true")
+    enable_map_preservation = LaunchConfiguration("enable_map_preservation", default="false")
+
     # Diretório do pacote
     mavros_launch_file = os.path.join(
         FindPackageShare("mavros").find("mavros"), "launch", "apm.launch"
@@ -63,6 +70,10 @@ def generate_launch_description():
                     "reconnect_timeout": reconnect_timeout,
                     "unite_imu_method": unite_imu_method,
                     "tf_publish_rate": tf_publish_rate,
+                    "enable_mapping": enable_mapping,
+                    "enable_relocalization": enable_relocalization,
+                    "enable_pose_jumping": enable_pose_jumping,
+                    "enable_map_preservation": enable_map_preservation,
                 }.items(),
             ),
             # This node will launch MAVROS
